@@ -1,17 +1,17 @@
 package gui;
 
+import com.itextpdf.text.*;
+import com.itextpdf.text.Font;
+import com.itextpdf.text.Image;
+import com.itextpdf.text.pdf.PdfPCell;
 import dao.TeacherDAO;
 import dao.TimeTableDAO;
 import model.Subject;
 import model.Teacher;
 import model.TimeTableEntry;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.Paragraph;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
 import java.io.FileOutputStream;
-import com.itextpdf.text.Image;
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
@@ -28,6 +28,7 @@ public class ManualTimeTableFrame extends JFrame {
     private List<Teacher> teachers;
     private List<Subject> subjects;
     private final String[] days = {"Monday","Tuesday","Wednesday","Thursday","Friday"};
+    String[] classrooms = {"A101", "B202", "C303", "D404"};
 
     private Map<String, Color> subjectColors = new HashMap<>();
 
@@ -46,13 +47,34 @@ public class ManualTimeTableFrame extends JFrame {
         topPanel.add(deleteRowBtn);
         topPanel.add(saveBtn);
         topPanel.add(exportPdfBtn);
+        topPanel.setOpaque(false);
+
+
 
         exportPdfBtn.addActionListener(e -> exportToPDF());
-        add(topPanel, BorderLayout.NORTH);
+//        add(topPanel, BorderLayout.NORTH);
+//        GradientPanel bgPanel = new GradientPanel(
+//                new Color(102,45,145),
+//                new Color(168,81,181)  // Light blue
+//        );
+        AnimatedGradientPanel bgPanel = new AnimatedGradientPanel();
 
+        bgPanel.setLayout(new BorderLayout());
         table = new JTable();
-        add(new JScrollPane(table), BorderLayout.CENTER);
+//        add(new JScrollPane(table), BorderLayout.CENTER);
+        bgPanel.add(topPanel, BorderLayout.NORTH);
+//        bgPanel.add(new JScrollPane(table), BorderLayout.CENTER);
+//.....................................
+        JScrollPane scrollPane = new JScrollPane(table);
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
 
+        table.setOpaque(false);
+        table.setBackground(new Color(0,0,0,0)); // transparent
+
+        bgPanel.add(scrollPane, BorderLayout.CENTER);
+        //....................................
+        setContentPane(bgPanel);
         teachers = TeacherDAO.getAllTeachers();
         subjects = new ArrayList<>();
         for (Teacher t : teachers) {
@@ -79,14 +101,20 @@ public class ManualTimeTableFrame extends JFrame {
 
     private void loadTimetable() {
         List<TimeTableEntry> timetable = TimeTableDAO.getTimeTableFromDB();
-        String[] columns = {"Day","Period","Subject","Teacher"};
+        String[] columns = {"Day","Period","Subject","Teacher","Classroom"};
         DefaultTableModel model = new DefaultTableModel(columns,0) {
             @Override
             public boolean isCellEditable(int row, int column) {return true;}
         };
 
         for (TimeTableEntry t: timetable) {
-            model.addRow(new Object[]{t.getDay(), t.getPeriod(), t.getSubject(), t.getTeacher()});
+            model.addRow(new Object[]{
+                    t.getDay(),
+                    t.getPeriod(),
+                    t.getSubject(),
+                    t.getTeacher(),
+
+            });
         }
 
         table.setModel(model);
@@ -108,6 +136,12 @@ public class ManualTimeTableFrame extends JFrame {
         for(Teacher t: teachers) teacherCombo.addItem(t.getName());
         teacherCol.setCellEditor(new DefaultCellEditor(teacherCombo));
         teacherCol.setCellRenderer(new TeacherCellRenderer());
+
+        TableColumn classroomCol = table.getColumnModel().getColumn(4); // index 4 = Classroom
+        JComboBox<String> classroomCombo = new JComboBox<>();
+        for(String c : classrooms) classroomCombo.addItem(c);
+        classroomCol.setCellEditor(new DefaultCellEditor(classroomCombo));
+
     }
 // ADD THIS
 
@@ -135,20 +169,58 @@ public class ManualTimeTableFrame extends JFrame {
             document.add(title);
 
             // Create table
-            PdfPTable pdfTable = new PdfPTable(4); // 4 columns
+            PdfPTable pdfTable = new PdfPTable(5); // 4 columns
             pdfTable.setWidthPercentage(100);
-            pdfTable.addCell("Day");
-            pdfTable.addCell("Period");
-            pdfTable.addCell("Subject");
-            pdfTable.addCell("Teacher");
+            PdfPCell header;
+
+            header = new PdfPCell(new Paragraph("Day"));
+            header.setBackgroundColor(BaseColor.LIGHT_GRAY); // color
+            pdfTable.addCell(header);
+
+            header = new PdfPCell(new Paragraph("Period"));
+            header.setBackgroundColor(BaseColor.LIGHT_GRAY);
+            pdfTable.addCell(header);
+
+            header = new PdfPCell(new Paragraph("Subject"));
+            header.setBackgroundColor(BaseColor.LIGHT_GRAY); // subject header different
+            pdfTable.addCell(header);
+
+            header = new PdfPCell(new Paragraph("Teacher"));
+            header.setBackgroundColor(BaseColor.LIGHT_GRAY);
+            pdfTable.addCell(header);
+
+            header = new PdfPCell(new Paragraph("Classroom"));
+            header.setBackgroundColor(BaseColor.LIGHT_GRAY);
+            pdfTable.addCell(header);
+
+//            pdfTable.addCell("Day");
+//            pdfTable.addCell("Period");
+//            pdfTable.addCell("Subject");
+//            pdfTable.addCell("Teacher");
+//            pdfTable.addCell("Classroom");
+
 
             DefaultTableModel model = (DefaultTableModel) table.getModel(); // FIXED
 
             for (int i = 0; i < model.getRowCount(); i++) {
-                pdfTable.addCell(model.getValueAt(i, 0).toString());
-                pdfTable.addCell(model.getValueAt(i, 1).toString());
-                pdfTable.addCell(model.getValueAt(i, 2).toString());
-                pdfTable.addCell(model.getValueAt(i, 3).toString());
+                pdfTable.addCell(new PdfPCell(new Paragraph(model.getValueAt(i,0).toString()))); // Day
+                pdfTable.addCell(new PdfPCell(new Paragraph(model.getValueAt(i,1).toString()))); // Period
+
+                // Subject colored based on name
+                String subject = model.getValueAt(i,2).toString();
+                PdfPCell subjectCell = new PdfPCell(new Paragraph(subject));
+                if(subject.equals("Math")) subjectCell.setBackgroundColor(BaseColor.CYAN);
+                else if(subject.equals("English")) subjectCell.setBackgroundColor(BaseColor.PINK);
+                else subjectCell.setBackgroundColor(BaseColor.LIGHT_GRAY);
+                pdfTable.addCell(subjectCell);
+
+                pdfTable.addCell(new PdfPCell(new Paragraph(model.getValueAt(i,3).toString()))); // Teacher
+                pdfTable.addCell(new PdfPCell(new Paragraph(model.getValueAt(i,4).toString())));
+//                pdfTable.addCell(model.getValueAt(i, 0).toString());
+//                pdfTable.addCell(model.getValueAt(i, 1).toString());
+//                pdfTable.addCell(model.getValueAt(i, 2).toString());
+//                pdfTable.addCell(model.getValueAt(i, 3).toString());
+//                pdfTable.addCell(model.getValueAt(i, 4).toString());
             }
 
             document.add(pdfTable);
@@ -166,7 +238,12 @@ public class ManualTimeTableFrame extends JFrame {
 
     private void addRow() {
         DefaultTableModel model = (DefaultTableModel) table.getModel();
-        model.addRow(new Object[]{"Monday",1,subjects.get(0).getName(),teachers.get(0).getName()});
+        model.addRow(new Object[]{
+                "Monday",1,
+                subjects.get(0).getName(),
+                teachers.get(0).getName(),
+                "Room-101"
+        });
     }
 
     private void deleteRow() {
@@ -177,6 +254,8 @@ public class ManualTimeTableFrame extends JFrame {
     }
 
     private void saveTimetable() {
+
+
         DefaultTableModel model = (DefaultTableModel) table.getModel();
         int rows = model.getRowCount();
 
@@ -224,6 +303,8 @@ public class ManualTimeTableFrame extends JFrame {
         TimeTableDAO.saveTimeTable(newTable);
         JOptionPane.showMessageDialog(this,"Timetable saved!");
         loadTimetable();
+
+
     }
 
     // Subject color renderer

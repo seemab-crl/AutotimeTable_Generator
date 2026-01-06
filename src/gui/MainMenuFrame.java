@@ -12,34 +12,38 @@ public class MainMenuFrame extends JFrame {
         setTitle("Time Table Management System");
         setSize(400, 200);
         setLocationRelativeTo(null);
-        setLayout(new GridBagLayout());
+
+        // Use the robust BackgroundPanel
+        BackgroundPanel bgPanel = new BackgroundPanel("C:/Users/Fayyaz/Desktop/bg.jpeg"); // path to your image
+        bgPanel.setLayout(new GridBagLayout());
 
         manageTeachersBtn = new JButton("Manage Teachers & Subjects");
         manualTimetableBtn = new JButton("Create Manual Timetable");
 
+        // Optional: style buttons
+        manageTeachersBtn.setFocusPainted(false);
+        manualTimetableBtn.setFocusPainted(false);
+
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(20, 20, 20, 20);
-        gbc.gridx = 0; gbc.gridy = 0;
-        add(manageTeachersBtn, gbc);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
 
-        gbc.gridx = 0; gbc.gridy = 1;
-        add(manualTimetableBtn, gbc);
+        bgPanel.add(manageTeachersBtn, gbc);
+
+        gbc.gridy = 1;
+        bgPanel.add(manualTimetableBtn, gbc);
 
         // Button actions
-        manageTeachersBtn.addActionListener(e -> {
-            new TeacherSubjectFrame();
-        });
+        manageTeachersBtn.addActionListener(e -> new TeacherSubjectFrame());
+        manualTimetableBtn.addActionListener(e -> new ManualTimeTableFrame());
 
-        manualTimetableBtn.addActionListener(e -> {
-            new ManualTimeTableFrame();
-        });
-
+        setContentPane(bgPanel);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setVisible(true);
     }
 
     public static void main(String[] args) {
-        // Launch main menu
-        SwingUtilities.invokeLater(() -> new MainMenuFrame());
+        SwingUtilities.invokeLater(MainMenuFrame::new);
     }
 }
